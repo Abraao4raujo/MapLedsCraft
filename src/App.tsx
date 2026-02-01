@@ -92,6 +92,13 @@ export default function App() {
       </div>
 
       <div className="flex items-center gap-2 sm:gap-4">
+        <button
+          onClick={() => window.open('https://donate.stripe.com/dRm4gs5BE5tIdC71i9cjS00', '_blank')}
+          className="flex items-center gap-2 px-3 py-1.5 bg-emerald-600/10 hover:bg-emerald-600/20 text-emerald-500 rounded-lg transition-all text-[10px] font-black uppercase tracking-widest border border-emerald-600/20"
+        >
+          <Heart size={14} fill="currentColor" />
+          <span className="hidden lg:inline">Apoiar Projeto</span>
+        </button>
 
         <div className="h-6 w-[1px] bg-border hidden sm:block" />
 
