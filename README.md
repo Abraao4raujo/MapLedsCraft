@@ -48,7 +48,7 @@ O projeto foi construído com o que há de mais moderno no ecossistema Web:
 Este projeto é de código aberto e foi desenvolvido por **abraao4raujo**. Se essa ferramenta te ajudou a economizar tempo no Minecraft, considere apoiar o desenvolvimento:
 
 - **LinkedIn:** [linkedin.com/in/abraao4raujo](https://www.linkedin.com/in/abraao4raujo)
-- **Doações:** [Seu Link de Doação Aqui](https://www.paypal.com/donate/?hosted_button_id=4BD9JY2B6CL2G)
+- **Doações:** [Doe um Café para o Dev](https://www.paypal.com/donate/?hosted_button_id=4BD9JY2B6CL2G)
 
 ---
 
