@@ -115,38 +115,62 @@ export default function App() {
     <main className="min-h-screen bg-background flex flex-col md:flex-row p-0 gap-0 h-screen overflow-hidden text-foreground">
       {showTips && <TipsModal onClose={() => setShowTips(false)} />}
 
-      <div className="flex-1 relative flex flex-col items-center justify-center bg-[#1a1a1a] overflow-hidden">
-        {selecionarBloco ? (
-          <div className="w-full h-full flex items-center justify-center p-2 md:p-6">
-            <EditorPixelArt
-              blockName={traduzirBlocos(selecionarBloco.name)}
-              activeVariantColors={selecionarBloco.variantColors}
-              allBlocks={data}
-            />
-          </div>
-        ) : (
-          <div className="text-center p-8 md:p-12 border-2 border-dashed border-white/10 rounded-2xl mx-4">
-            <p className="text-muted-foreground text-sm md:text-base">
-              Selecione uma cor na biblioteca para começar
-            </p>
-            <button
-              onClick={() => setSidebarMobile(true)}
-              className="mt-4 md:hidden px-6 py-2 bg-blue-600 rounded-full text-sm font-bold"
-            >
-              Abrir Biblioteca
-            </button>
-          </div>
-        )}
+      <div className="flex-1 relative flex flex-col items-center justify-center overflow-hidden bg-zinc-900">
+        {/* Overlay de Textura */}
+        <div
+          className="absolute inset-0 opacity-20 pointer-events-none"
+          style={{
+            backgroundImage: `url('https://www.transparenttextures.com/patterns/carbon-fibre.png'), url('https://minecraft.wiki/images/Dirt_JE2_BE2.png?8493a')`,
+            backgroundRepeat: 'repeat',
+            backgroundSize: 'auto, 64px',
+            imageRendering: 'pixelated',
+          }}
+        />
+
+        {/* Gradiente para profundidade */}
+        <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-transparent to-black/40 pointer-events-none" />
+
+        {/* Conteúdo do Editor */}
+        <div className="relative z-10 w-full h-full flex items-center justify-center">
+          {selecionarBloco ? (
+            <div className="w-full h-full flex items-center justify-center p-2 md:p-6">
+              <EditorPixelArt
+                blockName={traduzirBlocos(selecionarBloco.name)}
+                activeVariantColors={selecionarBloco.variantColors}
+                allBlocks={data}
+              />
+            </div>
+          ) : (
+            <div className="text-center p-8 md:p-12 border-2 border-dashed border-white/20 bg-black/40 backdrop-blur-md rounded-2xl mx-4 shadow-2xl">
+              <Blocks size={48} className="mx-auto mb-4 text-blue-500 opacity-50" />
+              <p className="text-white font-bold text-lg md:text-xl tracking-tight">
+                PRONTO PARA COMEÇAR?
+              </p>
+              <p className="text-zinc-400 text-sm mt-2">
+                Selecione um bloco na biblioteca ao lado
+              </p>
+              <button
+                onClick={() => setSidebarMobile(true)}
+                className="mt-6 md:hidden px-8 py-3 bg-blue-600 hover:bg-blue-500 text-white rounded-xl font-black uppercase tracking-widest transition-all shadow-lg shadow-blue-600/30"
+              >
+                Abrir Biblioteca
+              </button>
+            </div>
+          )}
+        </div>
       </div>
 
       <aside className={`
-        fixed inset-0 z-30 bg-card transform transition-transform duration-300 ease-in-out md:relative md:translate-x-0 md:inset-auto md:w-80 border-l border-border flex flex-col shadow-2xl
-        ${sidebarMobile ? "translate-x-0" : "translate-x-full md:translate-x-0"}
-      `}>
-        <div className="p-4 border-b border-border bg-muted/30 flex justify-between items-center">
+  fixed inset-0 z-30 bg-zinc-900 transform transition-transform duration-300 ease-in-out md:relative md:translate-x-0 md:inset-auto md:w-80 border-l border-white/10 flex flex-col shadow-2xl
+  ${sidebarMobile ? "translate-x-0" : "translate-x-full md:translate-x-0"}
+`}>
+        <div className="p-4 border-b border-white/10 bg-black/20 flex justify-between items-center">
           <div>
-            <h2 className="text-sm font-bold uppercase tracking-widest">Biblioteca</h2>
-            <p className="text-[10px] opacity-50">Selecione o material base</p>
+            <h2 className="text-sm font-black uppercase tracking-widest text-zinc-100">Biblioteca</h2>
+            <div className="flex items-center gap-1">
+              <div className="w-1.5 h-1.5 bg-emerald-500 rounded-full animate-pulse" />
+              <p className="text-[10px] text-zinc-500 font-bold uppercase">Materiais Disponíveis</p>
+            </div>
           </div>
           <button className="md:hidden p-2" onClick={() => setSidebarMobile(false)}>
             <X size={20} />
