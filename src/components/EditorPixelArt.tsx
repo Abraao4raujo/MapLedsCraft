@@ -10,7 +10,7 @@ interface EditorPixelArtProps {
   allBlocks: { rgb: [number, number, number], blocks: string[] }[];
 }
 
-type Tool = 'brush' | 'bucket' | 'square' | 'circle' | 'triangle';
+type Tool = 'brush' | 'bucket' | 'square' | 'circle' | 'triangle' | 'skin';
 
 export default function EditorPixelArt({ blockName, activeVariantColors, allBlocks }: EditorPixelArtProps) {
   const GRID_SIZE = 128
@@ -19,6 +19,29 @@ export default function EditorPixelArt({ blockName, activeVariantColors, allBloc
   const MAP_WRAPPER_SIZEY = 502
   const PIXEL_SIZE = CANVAS_DISPLAY_SIZE / GRID_SIZE
 
+  const PATTERNS = {
+    viniccius13: [
+      [0, 0, 0, 0, 0, 0, 0, 0], // Cabelo
+      [0, 0, 0, 0, 0, 0, 0, 0], // Cabelo
+      [0, 1, 1, 1, 1, 1, 1, 0], // Testa
+      [0, 2, 3, 1, 1, 3, 2, 0], // Olhos (Branco + Pupila)
+      [1, 2, 3, 1, 1, 3, 2, 1], // Olhos (Branco + Pupila)
+      [1, 1, 1, 1, 1, 1, 1, 1], // Rosto + TOPO DOS DENTES (4px) + Fone
+      [1, 1, 2, 2, 2, 2, 3, 3], // Rosto + BASE DOS DENTES (4px) + Fone
+      [1, 1, 2, 2, 2, 2, 1, 1], // Queixo
+    ],
+    davi_gamer: [
+      [0, 0, 0, 0, 0, 0, 0, 0], // Cabelo (Marrom)
+      [0, 0, 0, 0, 0, 0, 0, 0], // Cabelo (Marrom)
+      [0, 0, 0, 0, 1, 1, 0, 0], // Cabelo (Marrom)
+      [0, 1, 1, 1, 1, 1, 1, 0], // Testa (Pele)
+      [1, 3, 1, 1, 1, 1, 3, 1], // Olhos "Derp" (Pupilas nas extremidades)
+      [1, 1, 3, 2, 3, 3, 1, 1], // Topo da boca
+      [1, 1, 1, 3, 2, 2, 1, 1], // Boca aberta + Dente (2) + Língua parte superior
+      [1, 1, 1, 1, 2, 1, 1, 1] // Queixo
+    ]
+  };
+
   const canvasRef = useRef<HTMLCanvasElement | null>(null)
   const [isPainting, setIsPainting] = useState(false)
   const [selectedVariant, setSelectedVariant] = useState<string>("normal")
@@ -26,6 +49,7 @@ export default function EditorPixelArt({ blockName, activeVariantColors, allBloc
   const [zoom, setZoom] = useState(1);
   const [activeTool, setActiveTool] = useState<Tool>('brush');
   const [shapeStart, setShapeStart] = useState<{ x: number, y: number } | null>(null);
+  const [selectedSkin, setSelectedSkin] = useState<'viniccius13' | 'davi_gamer'>('viniccius13');
 
   const [mousePos, setMousePos] = useState({ x: 0, y: 0, visible: false })
 
@@ -42,6 +66,35 @@ export default function EditorPixelArt({ blockName, activeVariantColors, allBloc
     camada_3: `${blockName} (Profundo)`,
   };
 
+  function paintSkin(centerX: number, centerY: number, scale: number = 1) {
+    const canvas = canvasRef.current;
+    if (!canvas) return;
+    const ctx = canvas.getContext("2d");
+    if (!ctx) return;
+    const pattern = PATTERNS[selectedSkin];
+    const variants = ["camada_0", "normal", "camada_2", "camada_3"];
+
+    pattern.forEach((row, yOffset) => {
+      row.forEach((variantIdx, xOffset) => {
+        const color = activeVariantColors[variants[variantIdx]];
+        const startX = centerX + (xOffset * scale) - Math.floor((8 * scale) / 2);
+        const startY = centerY + (yOffset * scale) - Math.floor((8 * scale) / 2);
+
+        ctx.fillStyle = `rgb(${color.join(",")})`;
+        for (let sy = 0; sy < scale; sy++) {
+          for (let sx = 0; sx < scale; sx++) {
+            const drawX = startX + sx;
+            const drawY = startY + sy;
+            if (drawX >= 0 && drawX < GRID_SIZE && drawY >= 0 && drawY < GRID_SIZE) {
+              ctx.fillRect(drawX * PIXEL_SIZE, drawY * PIXEL_SIZE, Math.ceil(PIXEL_SIZE), Math.ceil(PIXEL_SIZE));
+            }
+          }
+        }
+      });
+    });
+    updateInventory();
+  }
+
   function updateInventory() {
     const canvas = canvasRef.current;
     if (!canvas) return;
@@ -55,10 +108,26 @@ export default function EditorPixelArt({ blockName, activeVariantColors, allBloc
       const baseRGB = block.rgb;
       const bName = block.blocks[0];
       const variants = {
-        [bName]: [Math.floor(baseRGB[0] * 220 / 255), Math.floor(baseRGB[1] * 220 / 255), Math.floor(baseRGB[2] * 220 / 255)],
-        [`${bName} (Sombra)`]: [Math.floor(baseRGB[0] * 180 / 255), Math.floor(baseRGB[1] * 180 / 255), Math.floor(baseRGB[2] * 180 / 255)],
-        [`${bName} (Luz)`]: [Math.floor(baseRGB[0] * 255 / 255), Math.floor(baseRGB[1] * 255 / 255), Math.floor(baseRGB[2] * 255 / 255)],
-        [`${bName} (Profundo)`]: [Math.floor(baseRGB[0] * 135 / 255), Math.floor(baseRGB[1] * 135 / 255), Math.floor(baseRGB[2] * 135 / 255)],
+        [bName]: [
+          Math.floor(baseRGB[0] * 220 / 255),
+          Math.floor(baseRGB[1] * 220 / 255),
+          Math.floor(baseRGB[2] * 220 / 255)
+        ],
+        [`${bName} (Sombra)`]: [
+          Math.floor(baseRGB[0] * 180 / 255),
+          Math.floor(baseRGB[1] * 180 / 255),
+          Math.floor(baseRGB[2] * 180 / 255)
+        ],
+        [`${bName} (Luz)`]: [
+          baseRGB[0],
+          baseRGB[1],
+          baseRGB[2]
+        ],
+        [`${bName} (Profundo)`]: [
+          Math.floor(baseRGB[0] * 135 / 255),
+          Math.floor(baseRGB[1] * 135 / 255),
+          Math.floor(baseRGB[2] * 135 / 255)
+        ],
       };
       Object.entries(variants).forEach(([name, rgb]) => {
         colorToNameMap[rgb.join(",")] = name;
@@ -238,11 +307,14 @@ export default function EditorPixelArt({ blockName, activeVariantColors, allBloc
       <div className="flex flex-col items-center gap-4 md:gap-6 w-full">
         {mousePos.visible && (
           <div
-            className="hidden md:block fixed pointer-events-none z-50 border border-white/50 mix-blend-difference"
+            className="hidden md:block fixed pointer-events-none z-50 mix-blend-difference"
             style={{
-              left: mousePos.x, top: mousePos.y,
-              width: brushSize * PIXEL_SIZE * zoom, height: brushSize * PIXEL_SIZE * zoom,
-              backgroundColor: `rgb(${activeColor.join(",")})`,
+              left: mousePos.x,
+              top: mousePos.y,
+              width: (activeTool === 'skin' ? 8 * brushSize : brushSize) * PIXEL_SIZE * zoom,
+              height: (activeTool === 'skin' ? 8 * brushSize : brushSize) * PIXEL_SIZE * zoom,
+              backgroundColor: activeTool === 'skin' ? 'rgba(255,255,255,0.1)' : `rgb(${activeColor.join(",")})`,
+              border: '1px solid white',
               transform: 'translate(-50%, -50%)',
               imageRendering: 'pixelated'
             }}
@@ -297,12 +369,21 @@ export default function EditorPixelArt({ blockName, activeVariantColors, allBloc
                 width={CANVAS_DISPLAY_SIZE}
                 height={CANVAS_DISPLAY_SIZE}
                 className="cursor-crosshair absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 touch-none"
-                style={{ imageRendering: 'pixelated', width: CANVAS_DISPLAY_SIZE, height: CANVAS_DISPLAY_SIZE }}
+                style={{
+                  imageRendering: 'pixelated',
+                  width: CANVAS_DISPLAY_SIZE,
+                  height: CANVAS_DISPLAY_SIZE,
+                  boxShadow: '0 0 0 1px rgba(255,255,255,0.1)',
+                  backgroundImage: `linear-gradient(to right, rgba(255,255,255,0.1) 1px, transparent 1px), 
+                      linear-gradient(to bottom, rgba(255,255,255,0.1) 1px, transparent 1px)`,
+                  backgroundSize: `${PIXEL_SIZE}px ${PIXEL_SIZE}px`,
+                }}
                 onMouseDown={(e) => {
                   const rect = e.currentTarget.getBoundingClientRect();
                   const x = Math.floor((e.clientX - rect.left) / (rect.width / GRID_SIZE));
                   const y = Math.floor((e.clientY - rect.top) / (rect.height / GRID_SIZE));
                   if (activeTool === 'bucket') floodFill(x, y);
+                  else if (activeTool === 'skin') paintSkin(x, y, brushSize);
                   else if (['square', 'circle', 'triangle'].includes(activeTool)) setShapeStart({ x, y });
                   else { setIsPainting(true); setStartPos({ x, y }); paintAt(x, y); }
                 }}
@@ -338,6 +419,21 @@ export default function EditorPixelArt({ blockName, activeVariantColors, allBloc
               {tool === 'triangle' && <Triangle size={18} />}
             </button>
           ))}
+          <div className="flex gap-2 bg-zinc-800/50 p-2 rounded-xl border border-white/5">
+            <button
+              onClick={() => { setActiveTool('skin'); setSelectedSkin('viniccius13'); }}
+              className={`p-2 rounded-lg text-[10px] font-bold ${selectedSkin === 'viniccius13' && activeTool === 'skin' ? 'bg-orange-500 text-white' : 'bg-black/20 text-zinc-400'}`}
+            >
+              VINICCIUS
+            </button>
+            <button
+              onClick={() => { setActiveTool('skin'); setSelectedSkin('davi_gamer'); }}
+              className={`p-2 rounded-lg text-[10px] font-bold ${selectedSkin === 'davi_gamer' && activeTool === 'skin' ? 'bg-red-500 text-white' : 'bg-black/20 text-zinc-400'}`}
+            >
+              DAVI
+            </button>
+          </div>
+
           <button onClick={clearCanvas} className="px-5 py-3 rounded-xl bg-red-900/20 text-red-500 hover:bg-red-900/40" title="Limpar tudo">
             <Trash size={18} />
           </button>
