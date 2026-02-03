@@ -1,5 +1,6 @@
 /* eslint-disable @typescript-eslint/no-unused-vars */
 "use client"
+import { Circle, Square, Triangle } from "lucide-react"
 import { useRef, useState } from "react"
 
 interface EditorPixelArtProps {
@@ -19,7 +20,7 @@ const BLOCK_NAMES_MAP: Record<string, string> = {
   camada_3: "CAMADA 3",
 }
 
-type Tool = 'brush' | 'bucket';
+type Tool = 'brush' | 'bucket' | 'square' | 'circle' | 'triangle';
 
 export default function EditorPixelArt({ blockName, colors }: EditorPixelArtProps) {
   const GRID_SIZE = 128
@@ -34,6 +35,7 @@ export default function EditorPixelArt({ blockName, colors }: EditorPixelArtProp
   const [brushSize, setBrushSize] = useState(1);
   const [zoom, setZoom] = useState(1);
   const [activeTool, setActiveTool] = useState<Tool>('brush');
+  const [shapeStart, setShapeStart] = useState<{ x: number, y: number } | null>(null);
 
   const [mousePos, setMousePos] = useState({ x: 0, y: 0, visible: false })
   const activeColor = colors[selectedVariant]
@@ -42,6 +44,55 @@ export default function EditorPixelArt({ blockName, colors }: EditorPixelArtProp
   const [lastPos, setLastPos] = useState<{ x: number, y: number } | null>(null)
 
   const [inventory, setInventory] = useState<Record<string, number>>({})
+
+  function drawSquare(x0: number, y0: number, x1: number, y1: number) {
+    const left = Math.min(x0, x1);
+    const right = Math.max(x0, x1);
+    const top = Math.min(y0, y1);
+    const bottom = Math.max(y0, y1);
+
+    for (let x = left; x <= right; x++) {
+      paintAt(x, top);
+      paintAt(x, bottom);
+    }
+    for (let y = top; y <= bottom; y++) {
+      paintAt(left, y);
+      paintAt(right, y);
+    }
+  }
+
+  function drawCircle(x0: number, y0: number, x1: number, y1: number) {
+    const radius = Math.floor(Math.sqrt(Math.pow(x1 - x0, 2) + Math.pow(y1 - y0, 2)));
+    let x = radius;
+    let y = 0;
+    let err = 0;
+
+    while (x >= y) {
+      const points = [
+        [x0 + x, y0 + y], [x0 + y, y0 + x], [x0 - y, y0 + x], [x0 - x, y0 + y],
+        [x0 - x, y0 - y], [x0 - y, y0 - x], [x0 + y, y0 - x], [x0 + x, y0 - y]
+      ];
+      points.forEach(([px, py]) => paintAt(px, py));
+
+      if (err <= 0) {
+        y += 1;
+        err += 2 * y + 1;
+      }
+      if (err > 0) {
+        x -= 1;
+        err -= 2 * x + 1;
+      }
+    }
+  }
+
+  function drawTriangle(x0: number, y0: number, x1: number, y1: number) {
+    const midX = x0;
+    // Três pontos: Topo (x0, y0), Base Esquerda (x1, y1), Base Direita (x0 - (x1-x0), y1)
+    paintLine(x0, y0, x1, y1); // Lado 1
+    paintLine(x1, y1, x0 - (x1 - x0), y1); // Base
+    paintLine(x0 - (x1 - x0), y1, x0, y0); // Lado 2
+  }
+
   function floodFill(startX: number, startY: number) {
     const canvas = canvasRef.current;
     if (!canvas) return;
@@ -327,13 +378,32 @@ export default function EditorPixelArt({ blockName, colors }: EditorPixelArtProp
 
                   if (activeTool === 'bucket') {
                     floodFill(x, y);
+                  } else if (['square', 'circle', 'triangle'].includes(activeTool)) {
+                    setShapeStart({ x, y }); // Salva onde a forma começa
                   } else {
                     setIsPainting(true);
                     setStartPos({ x, y });
                     paintAt(x, y);
                   }
                 }}
-                onMouseUp={() => { setIsPainting(false); setLastPos(null); setStartPos(null); updateInventory(); }}
+
+                onMouseUp={(e) => {
+                  if (shapeStart) {
+                    const rect = e.currentTarget.getBoundingClientRect();
+                    const x = Math.floor((e.clientX - rect.left) / (rect.width / GRID_SIZE));
+                    const y = Math.floor((e.clientY - rect.top) / (rect.height / GRID_SIZE));
+
+                    if (activeTool === 'square') drawSquare(shapeStart.x, shapeStart.y, x, y);
+                    if (activeTool === 'circle') drawCircle(shapeStart.x, shapeStart.y, x, y);
+                    if (activeTool === 'triangle') drawTriangle(shapeStart.x, shapeStart.y, x, y);
+                  }
+
+                  setIsPainting(false);
+                  setLastPos(null);
+                  setStartPos(null);
+                  setShapeStart(null);
+                  updateInventory();
+                }}
                 onMouseMove={handleMouseMove}
                 onMouseLeave={() => { setIsPainting(false); setMousePos(prev => ({ ...prev, visible: false })); }}
                 onMouseEnter={() => setMousePos(prev => ({ ...prev, visible: true }))}
@@ -348,18 +418,37 @@ export default function EditorPixelArt({ blockName, colors }: EditorPixelArtProp
         <div className="flex gap-3 w-full max-w-md pb-8">
           <button
             onClick={() => setActiveTool('brush')}
-            className={`flex-1 py-3 rounded-xl flex items-center justify-center gap-2 font-bold transition-all ${activeTool === 'brush' ? 'bg-blue-600 text-white shadow-lg shadow-blue-600/20' : 'bg-zinc-800 text-zinc-400'}`}
+            className={`flex-col p-3 flex-1 py-3 rounded-xl flex items-center justify-center gap-2 font-bold transition-all ${activeTool === 'brush' ? 'bg-blue-600 text-white shadow-lg shadow-blue-600/20' : 'bg-zinc-800 text-zinc-400'}`}
           >
             <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="m12 19 7-7 3 3-7 7-3-3Z" /><path d="m18 13-1.5-7.5L2 2l3.5 14.5L13 18l5-5Z" /><path d="m2 2 5 5" /><path d="m5 21 1.03-1.03" /></svg>
-            Pincel
           </button>
 
           <button
             onClick={() => setActiveTool('bucket')}
-            className={`flex-1 py-3 rounded-xl flex items-center justify-center gap-2 font-bold transition-all ${activeTool === 'bucket' ? 'bg-blue-600 text-white shadow-lg shadow-blue-600/20' : 'bg-zinc-800 text-zinc-400'}`}
+            className={`flex-col p-3 flex-1 py-3 rounded-xl flex items-center justify-center gap-2 font-bold transition-all ${activeTool === 'bucket' ? 'bg-blue-600 text-white shadow-lg shadow-blue-600/20' : 'bg-zinc-800 text-zinc-400'}`}
           >
             <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="m19 11-8-8-8.6 8.6a2 2 0 0 0 0 2.8l5.2 5.2c.8.8 2 .8 2.8 0L19 11Z" /><path d="m5 2 5 5" /><path d="M2 13h15" /><path d="M22 20a2 2 0 1 1-4 0c0-1.6 1.7-2.4 2-4 .3 1.6 2 2.4 2 4Z" /></svg>
-            Balde
+          </button>
+
+          <button
+            onClick={() => setActiveTool('square')}
+            className={`flex-col p-3 flex-1 py-3 rounded-xl flex items-center justify-center gap-2 font-bold transition-all ${activeTool === 'square' ? 'bg-blue-600 text-white shadow-lg shadow-blue-600/20' : 'bg-zinc-800 text-zinc-400'}`}
+          >
+            <Square />
+          </button>
+
+          <button
+            onClick={() => setActiveTool('circle')}
+            className={`flex-col p-3 flex-1 py-3 rounded-xl flex items-center justify-center gap-2 font-bold transition-all ${activeTool === 'circle' ? 'bg-blue-600 text-white shadow-lg shadow-blue-600/20' : 'bg-zinc-800 text-zinc-400'}`}
+          >
+            <Circle />
+          </button>
+
+          <button
+            onClick={() => setActiveTool('triangle')}
+            className={`flex-col p-3 flex-1 py-3 rounded-xl flex items-center justify-center gap-2 font-bold transition-all ${activeTool === 'triangle' ? 'bg-blue-600 text-white shadow-lg shadow-blue-600/20' : 'bg-zinc-800 text-zinc-400'}`}
+          >
+            <Triangle />
           </button>
 
           <button
