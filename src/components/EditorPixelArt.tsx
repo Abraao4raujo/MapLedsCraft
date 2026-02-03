@@ -19,6 +19,8 @@ const BLOCK_NAMES_MAP: Record<string, string> = {
   camada_3: "CAMADA 3",
 }
 
+type Tool = 'brush' | 'bucket';
+
 export default function EditorPixelArt({ blockName, colors }: EditorPixelArtProps) {
   const GRID_SIZE = 128
   const CANVAS_DISPLAY_SIZE = 420
@@ -31,6 +33,7 @@ export default function EditorPixelArt({ blockName, colors }: EditorPixelArtProp
   const [selectedVariant, setSelectedVariant] = useState<keyof typeof colors>("normal")
   const [brushSize, setBrushSize] = useState(1);
   const [zoom, setZoom] = useState(1);
+  const [activeTool, setActiveTool] = useState<Tool>('brush');
 
   const [mousePos, setMousePos] = useState({ x: 0, y: 0, visible: false })
   const activeColor = colors[selectedVariant]
@@ -39,6 +42,55 @@ export default function EditorPixelArt({ blockName, colors }: EditorPixelArtProp
   const [lastPos, setLastPos] = useState<{ x: number, y: number } | null>(null)
 
   const [inventory, setInventory] = useState<Record<string, number>>({})
+  function floodFill(startX: number, startY: number) {
+    const canvas = canvasRef.current;
+    if (!canvas) return;
+    const ctx = canvas.getContext("2d", { willReadFrequently: true });
+    if (!ctx) return;
+
+    const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+    const data = imageData.data;
+
+    const getPixelColor = (gx: number, gy: number) => {
+      const cx = Math.floor(gx * PIXEL_SIZE + PIXEL_SIZE / 2);
+      const cy = Math.floor(gy * PIXEL_SIZE + PIXEL_SIZE / 2);
+      const i = (cy * canvas.width + cx) * 4;
+      return [data[i], data[i + 1], data[i + 2], data[i + 3]];
+    };
+
+    const [startR, startG, startB, startA] = getPixelColor(startX, startY);
+    const [fillR, fillG, fillB] = activeColor;
+
+    if (startR === fillR && startG === fillG && startB === fillB && startA === 255) return;
+
+    const stack: [number, number][] = [[startX, startY]];
+    const visited = new Uint8Array(GRID_SIZE * GRID_SIZE);
+
+    ctx.fillStyle = `rgb(${fillR}, ${fillG}, ${fillB})`;
+
+    while (stack.length > 0) {
+      const [x, y] = stack.pop()!;
+      const idx = y * GRID_SIZE + x;
+
+      if (x < 0 || x >= GRID_SIZE || y < 0 || y >= GRID_SIZE || visited[idx]) continue;
+
+      const [curR, curG, curB, curA] = getPixelColor(x, y);
+
+      if (curR === startR && curG === startG && curB === startB && curA === startA) {
+
+        ctx.fillRect(
+          Math.floor(x * PIXEL_SIZE),
+          Math.floor(y * PIXEL_SIZE),
+          Math.ceil(PIXEL_SIZE),
+          Math.ceil(PIXEL_SIZE)
+        );
+
+        visited[idx] = 1;
+        stack.push([x + 1, y], [x - 1, y], [x, y + 1], [x, y - 1]);
+      }
+    }
+    updateInventory();
+  }
 
   function clearCanvas() {
     const canvas = canvasRef.current
@@ -250,7 +302,7 @@ export default function EditorPixelArt({ blockName, colors }: EditorPixelArtProp
             </button>
           ))}
         </div>
-        
+
         <div className="w-full h-[400px] md:h-[550px] overflow-auto border border-white/10 rounded-2xl bg-black/40 custom-scrollbar relative">
           <div style={{ width: MAP_WRAPPER_SIZEX * zoom, height: MAP_WRAPPER_SIZEY * zoom, display: 'flex', alignItems: 'center', justifyContent: 'center', minWidth: '100%', minHeight: '100%', maxWidth: "798px" }}>
             <div
@@ -269,12 +321,17 @@ export default function EditorPixelArt({ blockName, colors }: EditorPixelArtProp
                 className="cursor-crosshair bg-transparent absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 touch-none"
                 style={{ imageRendering: 'pixelated', width: CANVAS_DISPLAY_SIZE, height: CANVAS_DISPLAY_SIZE }}
                 onMouseDown={(e) => {
-                  setIsPainting(true);
                   const rect = e.currentTarget.getBoundingClientRect();
                   const x = Math.floor((e.clientX - rect.left) / (rect.width / GRID_SIZE));
                   const y = Math.floor((e.clientY - rect.top) / (rect.height / GRID_SIZE));
-                  setStartPos({ x, y });
-                  paintAt(x, y);
+
+                  if (activeTool === 'bucket') {
+                    floodFill(x, y);
+                  } else {
+                    setIsPainting(true);
+                    setStartPos({ x, y });
+                    paintAt(x, y);
+                  }
                 }}
                 onMouseUp={() => { setIsPainting(false); setLastPos(null); setStartPos(null); updateInventory(); }}
                 onMouseMove={handleMouseMove}
@@ -289,12 +346,28 @@ export default function EditorPixelArt({ blockName, colors }: EditorPixelArtProp
         </div>
 
         <div className="flex gap-3 w-full max-w-md pb-8">
-          <button onClick={fillAll} className="flex-1 py-3 rounded-xl bg-blue-600 text-white text-xs font-bold hover:bg-blue-500 transition-all shadow-lg shadow-blue-600/20 uppercase tracking-widest">Preencher</button>
+          <button
+            onClick={() => setActiveTool('brush')}
+            className={`flex-1 py-3 rounded-xl flex items-center justify-center gap-2 font-bold transition-all ${activeTool === 'brush' ? 'bg-blue-600 text-white shadow-lg shadow-blue-600/20' : 'bg-zinc-800 text-zinc-400'}`}
+          >
+            <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="m12 19 7-7 3 3-7 7-3-3Z" /><path d="m18 13-1.5-7.5L2 2l3.5 14.5L13 18l5-5Z" /><path d="m2 2 5 5" /><path d="m5 21 1.03-1.03" /></svg>
+            Pincel
+          </button>
+
+          <button
+            onClick={() => setActiveTool('bucket')}
+            className={`flex-1 py-3 rounded-xl flex items-center justify-center gap-2 font-bold transition-all ${activeTool === 'bucket' ? 'bg-blue-600 text-white shadow-lg shadow-blue-600/20' : 'bg-zinc-800 text-zinc-400'}`}
+          >
+            <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="m19 11-8-8-8.6 8.6a2 2 0 0 0 0 2.8l5.2 5.2c.8.8 2 .8 2.8 0L19 11Z" /><path d="m5 2 5 5" /><path d="M2 13h15" /><path d="M22 20a2 2 0 1 1-4 0c0-1.6 1.7-2.4 2-4 .3 1.6 2 2.4 2 4Z" /></svg>
+            Balde
+          </button>
+
           <button
             onClick={clearCanvas}
-            className="flex-1 py-3 rounded-xl bg-zinc-800 text-white text-xs font-bold hover:bg-zinc-700 transition-all uppercase tracking-widest"
+            className="px-5 py-3 rounded-xl bg-red-900/20 text-red-500 hover:bg-red-900/40 transition-all"
+            title="Limpar tudo"
           >
-            Limpar
+            <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M3 6h18" /><path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6" /><path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2" /><line x1="10" x2="10" y1="11" y2="17" /><line x1="14" x2="14" y1="11" y2="17" /></svg>
           </button>
         </div>
       </div>
