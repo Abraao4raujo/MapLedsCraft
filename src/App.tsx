@@ -78,7 +78,7 @@ export default function App() {
           <Blocks size={18} className="text-white" />
         </div>
         <div className="flex flex-col sm:flex-row sm:items-baseline sm:gap-2">
-          <h1 className="text-sm font-black uppercase tracking-tighter leading-none">Pixel Map Art</h1>
+          <h1 className="text-sm font-black uppercase tracking-tighter leading-none">Map Leds Craft</h1>
           <span className="text-[10px] text-muted-foreground hidden xs:block">
             Desenvolvido por Abraao Araujo
           </span>
