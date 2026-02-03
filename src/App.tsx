@@ -1,9 +1,10 @@
 "use client"
 import { Blocks, Heart, HelpCircle, Info, Menu, X } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
-import ptBr from "../public/pt_br.json";
+
 import EditorPixelArt from "./components/EditorPixelArt";
 import TipsModal from "./components/TipsModal";
+import traduzirBlocos from "./helpers/traduzirBlocos";
 
 interface MapColorBase {
   base_id: number;
@@ -33,13 +34,6 @@ export default function App() {
   const [infoAberta, setInfoAberta] = useState<number | null>(null);
   const [sidebarMobile, setSidebarMobile] = useState(false);
   const [showTips, setShowTips] = useState(false);
-
-  const traduzirBlocos = (nomeIngles: string) => {
-    const snakeCase = nomeIngles.toLowerCase().trim().replace(/\s+/g, '_');
-    const chave = `block.minecraft.${snakeCase}`;
-
-    return (ptBr as Record<string, string>)[chave] || nomeIngles;
-  }
 
   const onSelectBlock = (name: string, rgb: [number, number, number]) => {
     handleSelect(name, rgb);
@@ -126,7 +120,8 @@ export default function App() {
           <div className="w-full h-full flex items-center justify-center p-2 md:p-6">
             <EditorPixelArt
               blockName={traduzirBlocos(selecionarBloco.name)}
-              colors={selecionarBloco.variantColors}
+              activeVariantColors={selecionarBloco.variantColors}
+              allBlocks={data}
             />
           </div>
         ) : (
